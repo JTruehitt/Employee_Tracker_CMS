@@ -66,7 +66,6 @@ const init = async () => {
 };
 
 const continuePrompt = async () => {
-  
   let { response } = await inquirer.prompt({
     name: "response",
     type: "list",
@@ -78,33 +77,30 @@ const continuePrompt = async () => {
   else {
     console.log("Bye!");
     process.exit();
+  }
 };
 
-}
 // WHEN I choose to view all departments
 // THEN I am presented with a formatted table showing department names and department ids
 
 const viewAllDepartments = async () => {
   let query = `SELECT * FROM departments`;
-  // const rows = await db.query(query)
-  // console.log(rows)
   db.query(query, (err, res) => {
     if (err) console.log("error", err);
     console.table(res);
     continuePrompt();
   });
-  console.log("hellloooo");
-  // continuePrompt();
 };
 
 // WHEN I choose to view all roles
 // THEN I am presented with the job title, role id, the department that role belongs to, and the salary for that role
 
 const viewAllRoles = async () => {
-  query = `SELECT * FROM roles`;
+  query = `SELECT roles.title, roles.id, departments.name AS department_name, roles.salary FROM roles INNER JOIN departments ON roles.department_id = departments.id`;
   db.query(query, (err, res) => {
     if (err) console.log("error", err);
     console.table(res);
+    continuePrompt();
   });
 };
 
@@ -112,10 +108,11 @@ const viewAllRoles = async () => {
 // THEN I am presented with a formatted table showing employee data, including employee ids, first names, last names, job titles, departments, salaries, and managers that the employees report to
 
 const viewAllEmployees = async () => {
-  query = `SELECT * FROM employees`;
+  query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e INNER JOIN roles AS r ON e.role_id = r.id INNER JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id`;
   db.query(query, (err, res) => {
     if (err) console.log("error", err);
     console.table(res);
+    continuePrompt();
   });
 };
 
