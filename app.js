@@ -13,26 +13,28 @@ const activitySelect = [
       "VIEW all DEPARTMENTS",
       "VIEW all ROLES",
       "VIEW all EMPLOYEES",
-      "ADD a DEPARTMENT",
-      "ADD a ROLE",
-      "ADD an EMPLOYEE",
+      "ADD a NEW DEPARTMENT",
+      "ADD a NEW ROLE",
+      "ADD a NEW EMPLOYEE",
       "UPDATE an EMPLOYEE ROLE",
     ],
   },
 ];
 
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "employee_db",
-});
+const db = mysql
+  .createPool({
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "employee_db",
+  })
+  .promise();
 
-db.connect((err) => {
-  if (err) throw err;
-  console.log("Database connection successful.");
-  init();
-});
+// db.connect((err) => {
+//   if (err) throw err;
+//   console.log("Database connection successful.");
+//   init();
+// });
 
 const init = async () => {
   const { activity } = await inquirer.prompt(activitySelect);
@@ -47,13 +49,13 @@ const init = async () => {
     case "VIEW all EMPLOYEES":
       viewAllEmployees();
       break;
-    case "ADD a DEPARTMENT":
+    case "ADD a NEW DEPARTMENT":
       addDepartment();
       break;
-    case "ADD a ROLE":
-      //put redirect here;
+    case "ADD a NEW ROLE":
+      addRole();
       break;
-    case "ADD an EMPLOYEE":
+    case "ADD a NEW EMPLOYEE":
       //put redirect here;
       break;
     case "UPDATE an EMPLOYEE ROLE":
@@ -85,11 +87,9 @@ const continuePrompt = async () => {
 
 const viewAllDepartments = async () => {
   let query = `SELECT * FROM departments`;
-  db.query(query, (err, res) => {
-    if (err) console.log("error", err);
-    console.table(res);
-    continuePrompt();
-  });
+  const data = await db.query(query);
+  console.table(data[0]);
+  continuePrompt();
 };
 
 // WHEN I choose to view all roles
@@ -97,11 +97,9 @@ const viewAllDepartments = async () => {
 
 const viewAllRoles = async () => {
   query = `SELECT roles.title, roles.id, departments.name AS department_name, roles.salary FROM roles INNER JOIN departments ON roles.department_id = departments.id`;
-  db.query(query, (err, res) => {
-    if (err) console.log("error", err);
-    console.table(res);
-    continuePrompt();
-  });
+  const data = await db.query(query);
+  console.table(data[0]);
+  continuePrompt();
 };
 
 // WHEN I choose to view all employees
@@ -109,11 +107,9 @@ const viewAllRoles = async () => {
 
 const viewAllEmployees = async () => {
   query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e INNER JOIN roles AS r ON e.role_id = r.id INNER JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id`;
-  db.query(query, (err, res) => {
-    if (err) console.log("error", err);
-    console.table(res);
-    continuePrompt();
-  });
+  const data = await db.query(query);
+  console.table(data[0]);
+  continuePrompt();
 };
 
 // WHEN I choose to add a department
@@ -121,51 +117,75 @@ const viewAllEmployees = async () => {
 
 const addDepartment = async () => {
   const { newDepartment } = await inquirer.prompt({
-    name: 'newDepartment',
-    type: 'input',
-    message: 'What is the name of the new department?',
-  })
+    name: "newDepartment",
+    type: "input",
+    message: "What is the name of the new department?",
+  });
 
   query = `INSERT INTO departments (name) VALUES (?)`;
   values = newDepartment;
-  db.query(query, values, (err, res) => {
-    if (err) console.log('error', err);
-    console.log('New department added successfully!')
-    viewAllDepartments();
-  })
-}
-
+  const data = await db.query(query, values);
+  console.log("New department added successfully!");
+  viewAllDepartments();
+};
 
 // WHEN I choose to add a role
 // THEN I am prompted to enter the name, salary, and department for the role and that role is added to the database
 
+const addRole = async () => {
+  const getDepartments = async () => {
+    let departmentsObj = await db.query(
+      "SELECT DISTINCT name FROM departments"
+    );
 
+    let departments = departmentsObj[0].map((dept) => dept.name);
+    return departments;
+  };
+
+  const response = await inquirer.prompt([
+    {
+      name: "newRole",
+      type: "input",
+      message: "What is the name of the new role?",
+    },
+    {
+      name: "salary",
+      type: "input",
+      message: "What is the salary of the new role?",
+    },
+    {
+      name: "department",
+      type: "list",
+      message: "Which department is the new role in?",
+      choices: await getDepartments(),
+    },
+  ]);
+
+  query = `INSERT INTO roles (title, salary, department_id) VALUES (? ? ?)`;
+  values = response;
+  db.query(query, values, (err, res) => {
+    if (err) console.log("error", err);
+    console.log("New role added successfully!");
+    viewAllRoles();
+  });
+};
 
 // WHEN I choose to add an employee
 // THEN I am prompted to enter the employee’s first name, last name, role, and manager, and that employee is added to the database
 
-
-
 // WHEN I choose to update an employee role
 // THEN I am prompted to select an employee to update and their new role and this information is updated in the database
-
 
 // BONUS:
 
 // Update employee managers.
 
-
-
 // View employees by manager.
-
-
 
 // View employees by department.
 
-
-
 // Delete departments, roles, and employees.
 
-
-
 // View the total utilized budget of a department—in other words, the combined salaries of all employees in that department.
+
+init();
