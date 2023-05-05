@@ -56,7 +56,7 @@ const init = async () => {
       addRole();
       break;
     case "ADD a NEW EMPLOYEE":
-      //put redirect here;
+      addEmployee();
       break;
     case "UPDATE an EMPLOYEE ROLE":
       //put redirect here;
@@ -122,8 +122,8 @@ const addDepartment = async () => {
     message: "What is the name of the new department?",
   });
 
-  query = `INSERT INTO departments (name) VALUES (?)`;
-  values = newDepartment;
+  let query = `INSERT INTO departments (name) VALUES (?)`;
+  let values = newDepartment;
   const data = await db.query(query, values);
   console.log("New department added successfully!");
   viewAllDepartments();
@@ -161,8 +161,8 @@ const addRole = async () => {
     },
   ]);
 
-  query = `INSERT INTO roles (title, salary, department_id) VALUES (? ? ?)`;
-  values = response;
+  let query = `INSERT INTO roles (title, salary, department_id) VALUES (? ? ?)`;
+  let values = response;
   db.query(query, values, (err, res) => {
     if (err) console.log("error", err);
     console.log("New role added successfully!");
@@ -173,6 +173,66 @@ const addRole = async () => {
 // WHEN I choose to add an employee
 // THEN I am prompted to enter the employee’s first name, last name, role, and manager, and that employee is added to the database
 
+const addEmployee = async () => {
+  const getRoles = async () => {
+    let query = "SELECT id, title FROM roles";
+    let rolesObj = await db.query(query);
+
+    let roles = rolesObj[0].map((role) => role.title);
+    console.log(roles);
+    return roles;
+  };
+
+  const getManagerIDs = async () => {
+    let query = `SELECT id, CONCAT(first_name, ' ', last_name) AS manager FROM employees WHERE manager_id IS NULL`;
+    let managerObj = await db.query(query);
+
+    let managers = managerObj[0].map((m) => m.id);
+    console.log(managers);
+    return managers;
+  };
+
+  let { first_name, last_name, role, manager } = await inquirer.prompt([
+    {
+      name: "first_name",
+      type: "input",
+      message: "Employee first name",
+    },
+    {
+      name: "last_name",
+      type: "input",
+      message: "Employee last name",
+    },
+    {
+      name: "role",
+      type: "list",
+      message: "Employee role",
+      choices: await getRoles(),
+    },
+    {
+      name: "manager",
+      type: "list",
+      message: "Employee manager",
+      choices: async () => {
+        let ids = await getManagerIDs();
+        let options = [...ids, 'null'];
+        return options;
+      },
+    },
+  ]);
+
+  if (manager === 'null') {manager = null;}
+
+  let query =
+    `INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES ( ?, ?, (SELECT id FROM roles WHERE title=?), ?)`;
+  try {
+    const data = await db.query(query, [first_name, last_name, role, manager]); 
+      console.log("Employee successfully added to database.");
+      viewAllEmployees();
+    } catch (err) {
+      console.log('error: ', err)
+    }
+  };
 // WHEN I choose to update an employee role
 // THEN I am prompted to select an employee to update and their new role and this information is updated in the database
 
