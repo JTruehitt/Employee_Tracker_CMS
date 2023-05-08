@@ -17,6 +17,8 @@ const activitySelect = [
       "ADD a NEW ROLE",
       "ADD a NEW EMPLOYEE",
       "UPDATE an EMPLOYEE ROLE",
+      "UPDATE an EMPLOYEE MANAGER",
+      "VIEW EMPLOYEES by MANAGER",
     ],
   },
 ];
@@ -60,6 +62,12 @@ const init = async () => {
       break;
     case "UPDATE an EMPLOYEE ROLE":
       updateEmployeeRole();
+      break;
+    case "UPDATE an EMPLOYEE MANAGER":
+      updateEmployeeManager();
+      break;
+    case "VIEW EMPLOYEES by MANAGER":
+      viewEmployeesByManager();
       break;
     // case '':
     //     //put redirect here;
@@ -287,8 +295,109 @@ const updateEmployeeRole = async () => {
 // BONUS:
 
 // Update employee managers.
+const updateEmployeeManager = async () => {
+  const getEmployees = async () => {
+    let query = `SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS employee FROM employees`;
+    let employeeObj = await db.query(query);
+    console.log(employeeObj);
+    let employees = employeeObj[0].map((e) => e.employee);
+    console.log("employees: ", employees);
+    return employees;
+  };
+
+  const getManagers = async () => {
+    let query = "SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS manager FROM employees WHERE manager_id IS NULL";
+    let managerObj = await db.query(query);
+
+    let managers = managerObj[0].map(m => m.manager);
+    return managers;
+  };
+
+  const { employee, newManager } = await inquirer.prompt([
+    {
+      name: "employee",
+      type: "list",
+      message: `Which employee's manager would you like to change?`,
+      choices: await getEmployees(),
+    },
+    {
+      name: "newManager",
+      type: "list",
+      message: `Who is the employee's new manager?`,
+      choices: await getManagers(),
+    },
+  ]);
+
+  let employeeID = employee.split(":")[0];
+  let newManagerID = newManager.split(":")[0];
+
+  try {
+    let query = `UPDATE employees SET manager_id = ? WHERE id = ?`;
+    const data = db.query(query, [newManagerID, employeeID]);
+    console.log(`Employee manager updated!`);
+    viewAllEmployees();
+  } catch (err) {
+    console.log("error: ", err);
+  }
+};
+
 
 // View employees by manager.
+
+const viewEmployeesByManager = async () => {
+
+  // I wasn't sure if this meant view all employees ordered by manager, or if you should be able to select a manager and then view their employees. I decided to try to do both and this inital prompt is just to determine which method to use. 
+
+  const { method } = await inquirer.prompt([{
+    name: 'method',
+    type: 'list',
+    message: 'How would you like the data presented?',
+    choices: ['All employees ordered by manager.', 'Select a manager and only view their employees.']
+  }])
+console.log(method)
+  switch (method) {
+
+    case 'All employees ordered by manager.':
+
+      query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e INNER JOIN roles AS r ON e.role_id = r.id INNER JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id ORDER BY manager`;
+      const data = await db.query(query);
+      console.table(data[0]);
+      continuePrompt();
+
+    break;
+
+    case 'Select a manager and only view their employees.':
+
+    const getManagers = async () => {
+      let query = "SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS manager FROM employees WHERE manager_id IS NULL";
+      let managerObj = await db.query(query);
+  
+      let managers = managerObj[0].map(m => m.manager);
+      return managers;
+    };
+
+    const { manager } = await inquirer.prompt([{
+      name: 'manager',
+      type: 'list',
+      message: `Which manager's employees would you like to view?`,
+      choices: await getManagers()
+    }]);
+
+    let managerID = parseInt(manager.split(':')[0]);
+    console.log(managerID)
+    try {
+      let query = `SELECT * FROM employees WHERE manager_id = ?`
+    const data = await db.query(query, managerID);
+      console.table(data[0]);
+      continuePrompt()
+    } catch (err) {
+      console.log('error :', err)
+    }
+    break;
+  }
+  
+
+}
 
 // View employees by department.
 

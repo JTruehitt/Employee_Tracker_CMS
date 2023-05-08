@@ -21,6 +21,6 @@ VALUES
   ('Jane', 'Smith', 2, 1),
   ('Bob', 'Johnson', 2, 1),
   ('Mary', 'Davis', 3, NULL),
-  ('Alex', 'Brown', 4, 3),
+  ('Alex', 'Brown', 4, 4),
   ('Sarah', 'Lee', 5, NULL),
-  ('James', 'Kim', 6, 5);
+  ('James', 'Kim', 6, 6);
