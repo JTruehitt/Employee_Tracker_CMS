@@ -59,7 +59,7 @@ const init = async () => {
       addEmployee();
       break;
     case "UPDATE an EMPLOYEE ROLE":
-      //put redirect here;
+      updateEmployeeRole();
       break;
     // case '':
     //     //put redirect here;
@@ -215,26 +215,74 @@ const addEmployee = async () => {
       message: "Employee manager",
       choices: async () => {
         let ids = await getManagerIDs();
-        let options = [...ids, 'null'];
+        let options = [...ids, "null"];
         return options;
       },
     },
   ]);
 
-  if (manager === 'null') {manager = null;}
+  if (manager === "null") {
+    manager = null;
+  }
 
-  let query =
-    `INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES ( ?, ?, (SELECT id FROM roles WHERE title=?), ?)`;
+  let query = `INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES ( ?, ?, (SELECT id FROM roles WHERE title=?), ?)`;
   try {
-    const data = await db.query(query, [first_name, last_name, role, manager]); 
-      console.log("Employee successfully added to database.");
-      viewAllEmployees();
-    } catch (err) {
-      console.log('error: ', err)
-    }
-  };
+    const data = await db.query(query, [first_name, last_name, role, manager]);
+    console.log("Employee successfully added to database.");
+    viewAllEmployees();
+  } catch (err) {
+    console.log("error: ", err);
+  }
+};
+
 // WHEN I choose to update an employee role
 // THEN I am prompted to select an employee to update and their new role and this information is updated in the database
+
+const updateEmployeeRole = async () => {
+  const getEmployees = async () => {
+    let query = `SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS employee FROM employees`;
+    let employeeObj = await db.query(query);
+    console.log(employeeObj);
+    let employees = employeeObj[0].map((e) => e.employee);
+    console.log("employees: ", employees);
+    return employees;
+  };
+
+  const getRoles = async () => {
+    let query = "SELECT CONCAT(id, ': ', title) AS roles FROM roles";
+    let rolesObj = await db.query(query);
+
+    let roles = rolesObj[0].map((role) => role.roles);
+    return roles;
+  };
+
+  const { employee, newRole } = await inquirer.prompt([
+    {
+      name: "employee",
+      type: "list",
+      message: `Which employee's role would you like to change?`,
+      choices: await getEmployees(),
+    },
+    {
+      name: "newRole",
+      type: "list",
+      message: `What is the employee's new role?`,
+      choices: await getRoles(),
+    },
+  ]);
+
+  let employeeID = employee.split(":")[0];
+  let newRoleID = newRole.split(":")[0];
+
+  try {
+    let query = `UPDATE employees SET role_id = ? WHERE id = ?`;
+    const data = db.query(query, [newRoleID, employeeID]);
+    console.log(`Employee role updated!`);
+    viewAllEmployees();
+  } catch (err) {
+    console.log("error: ", err);
+  }
+};
 
 // BONUS:
 
