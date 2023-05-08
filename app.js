@@ -19,6 +19,7 @@ const activitySelect = [
       "UPDATE an EMPLOYEE ROLE",
       "UPDATE an EMPLOYEE MANAGER",
       "VIEW EMPLOYEES by MANAGER",
+      "VIEW EMPLOYEES by DEPARTMENT",
     ],
   },
 ];
@@ -69,6 +70,9 @@ const init = async () => {
     case "VIEW EMPLOYEES by MANAGER":
       viewEmployeesByManager();
       break;
+      case "VIEW EMPLOYEES by DEPARTMENT":
+        viewEmployeesByDepartment();
+        break;
     // case '':
     //     //put redirect here;
     //     break;
@@ -395,12 +399,61 @@ console.log(method)
     }
     break;
   }
-  
-
 }
 
 // View employees by department.
 
+const viewEmployeesByDepartment = async () => {
+
+  // Same as prior query, I wasn't sure which output this wanted, so I built in both options. 
+
+  const { method } = await inquirer.prompt([{
+    name: 'method',
+    type: 'list',
+    message: 'How would you like the data presented?',
+    choices: ['All employees ordered by department.', 'Select a department and only view those employees.']
+  }])
+console.log(method)
+  switch (method) {
+
+    case 'All employees ordered by department.':
+
+      query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e INNER JOIN roles AS r ON e.role_id = r.id INNER JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id ORDER BY department_name`;
+      const data = await db.query(query);
+      console.table(data[0]);
+      continuePrompt();
+
+    break;
+
+    case 'Select a department and only view those employees.':
+
+    const getDepartments = async () => {
+      let departmentsObj = await db.query(
+        "SELECT DISTINCT name AS department FROM departments"
+      );
+  
+      let departments = departmentsObj[0].map((dept) => dept.department);
+      return departments;
+    };
+
+    const { department } = await inquirer.prompt([{
+      name: 'department',
+      type: 'list',
+      message: `Which department's employees would you like to view?`,
+      choices: await getDepartments()
+    }]);
+
+    try {
+      let query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department, CONCAT(e2.last_name, ", ", e2.first_name) AS manager FROM employees e INNER JOIN roles r ON e.role_id = r.id INNER JOIN departments d ON r.department_id = d.id LEFT JOIN employees e2 ON e2.id = e.manager_id WHERE d.name = ?`
+    const data = await db.query(query, department);
+      console.table(data[0]);
+      continuePrompt()
+    } catch (err) {
+      console.log('error :', err)
+    }
+    break;
+  }
+}
 // Delete departments, roles, and employees.
 
 // View the total utilized budget of a department—in other words, the combined salaries of all employees in that department.
