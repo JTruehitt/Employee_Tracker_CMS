@@ -33,7 +33,8 @@ const db = mysql
     user: "root",
     password: "",
     database: "employee_db",
-  })
+  },
+  console.log("Successfully connected to database."))
   .promise();
 
 const init = async () => {
@@ -156,7 +157,7 @@ const addRole = async () => {
     return departments;
   };
 
-  const response = await inquirer.prompt([
+  const { newRole, salary, department } = await inquirer.prompt([
     {
       name: "newRole",
       type: "input",
@@ -175,13 +176,15 @@ const addRole = async () => {
     },
   ]);
 
-  let query = `INSERT INTO roles (title, salary, department_id) VALUES (? ? ?)`;
-  let values = response;
-  db.query(query, values, (err, res) => {
-    if (err) console.log("error", err);
-    console.log("New role added successfully!");
-    viewAllRoles();
-  });
+  try {
+  let query = `INSERT INTO roles (title, salary, department_id) VALUES (?, ?, (SELECT id FROM departments where name = ?) )`;
+  let values = [ newRole, salary, department];
+  const data = await db.query(query, values);
+  console.log('Role successfully added!')
+  viewAllRoles();
+  } catch (err) {
+    console.log('error: ', err)
+  }
 };
 
 // WHEN I choose to add an employee
@@ -330,7 +333,7 @@ const updateEmployeeManager = async () => {
 
   try {
     let query = `UPDATE employees SET manager_id = ? WHERE id = ?`;
-    const data = db.query(query, [newManagerID, employeeID]);
+    const data = await db.query(query, [newManagerID, employeeID]);
     console.log(`Employee manager updated!`);
     viewAllEmployees();
   } catch (err) {
@@ -386,7 +389,7 @@ const viewEmployeesByManager = async () => {
       let managerID = parseInt(manager.split(":")[0]);
       
       try {
-        let query = `SELECT * FROM employees WHERE manager_id = ?`;
+        let query = `SELECT e.id, CONCAT(e.last_name, ', ', e.first_name) AS employee, r.title AS role, CONCAT(e2.last_name, ', ', e2.first_name) AS manager FROM employees e JOIN roles r ON e.role_id = r.id JOIN employees e2 ON e.manager_id = e2.id WHERE e.manager_id = ?`;
         const data = await db.query(query, managerID);
         console.table(data[0]);
         continuePrompt();
