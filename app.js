@@ -21,6 +21,7 @@ const activitySelect = [
       "VIEW EMPLOYEES by MANAGER",
       "VIEW EMPLOYEES by DEPARTMENT",
       "DELETE RECORDS",
+      "VIEW DEPARTMENT BUDGETS"
     ],
   },
 ];
@@ -234,13 +235,13 @@ const addEmployee = async () => {
       message: "Employee manager",
       choices: async () => {
         let ids = await getManagerIDs();
-        let options = [...ids, "null"];
+        let options = ['none', ...ids];
         return options;
       },
     },
   ]);
 
-  if (manager === "null") {
+  if (manager === "none") {
     manager = null;
   }
 
@@ -589,10 +590,13 @@ const viewDepartnmentBudgets = async () => {
       choices: await getDepartments(),
     },
   ]);
-
+console.log(department)
   try {
     let query =
-      "SELECT d.name AS department, SUM(r.salary) FROM departments d JOIN roles.r ON d.id = r.department_id JOIN employees e ON e.role_id = r.id WHERE department";
+      "SELECT d.name AS department, SUM(r.salary) AS total_budget FROM departments d JOIN roles r ON d.id = r.department_id JOIN employees e ON e.role_id = r.id WHERE CONCAT(d.id, ': ', d.name) = ? GROUP BY d.name";
+      const data = await db.query(query, department);
+      console.table(data[0])
+      continuePrompt();
   } catch (err) {
     console.log("error: ", err);
   }
