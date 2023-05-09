@@ -21,7 +21,8 @@ const activitySelect = [
       "VIEW EMPLOYEES by MANAGER",
       "VIEW EMPLOYEES by DEPARTMENT",
       "DELETE RECORDS",
-      "VIEW DEPARTMENT BUDGETS"
+      "VIEW DEPARTMENT BUDGETS",
+      "Exit"
     ],
   },
 ];
@@ -34,12 +35,6 @@ const db = mysql
     database: "employee_db",
   })
   .promise();
-
-// db.connect((err) => {
-//   if (err) throw err;
-//   console.log("Database connection successful.");
-//   init();
-// });
 
 const init = async () => {
   const { activity } = await inquirer.prompt(activitySelect);
@@ -81,9 +76,10 @@ const init = async () => {
     case "VIEW DEPARTMENT BUDGETS":
       viewDepartnmentBudgets();
       break;
-    // case '':
-    //     //put redirect here;
-    //     break;
+    case "Exit":
+      console.log("Bye!")
+      process.exit();
+      break;
   }
 };
 
@@ -94,7 +90,6 @@ const continuePrompt = async () => {
     message: "Anything else?",
     choices: ["yes", "no"],
   });
-
   if (response === "yes") init();
   else {
     console.log("Bye!");
@@ -116,7 +111,7 @@ const viewAllDepartments = async () => {
 // THEN I am presented with the job title, role id, the department that role belongs to, and the salary for that role
 
 const viewAllRoles = async () => {
-  query = `SELECT roles.title, roles.id, departments.name AS department_name, roles.salary FROM roles INNER JOIN departments ON roles.department_id = departments.id`;
+  query = `SELECT roles.title, roles.id, departments.name AS department_name, roles.salary FROM roles LEFT JOIN departments ON roles.department_id = departments.id`;
   const data = await db.query(query);
   console.table(data[0]);
   continuePrompt();
@@ -126,7 +121,7 @@ const viewAllRoles = async () => {
 // THEN I am presented with a formatted table showing employee data, including employee ids, first names, last names, job titles, departments, salaries, and managers that the employees report to
 
 const viewAllEmployees = async () => {
-  query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e JOIN roles AS r ON e.role_id = r.id JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id`;
+  query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e LEFT JOIN roles AS r ON e.role_id = r.id LEFT JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id`;
   const data = await db.query(query);
   console.table(data[0]);
   continuePrompt();
@@ -157,7 +152,6 @@ const addRole = async () => {
     let departmentsObj = await db.query(
       "SELECT DISTINCT name FROM departments"
     );
-
     let departments = departmentsObj[0].map((dept) => dept.name);
     return departments;
   };
@@ -197,18 +191,14 @@ const addEmployee = async () => {
   const getRoles = async () => {
     let query = "SELECT id, title FROM roles";
     let rolesObj = await db.query(query);
-
     let roles = rolesObj[0].map((role) => role.title);
-    console.log(roles);
     return roles;
   };
 
   const getManagerIDs = async () => {
     let query = `SELECT id, CONCAT(first_name, ' ', last_name) AS manager FROM employees WHERE manager_id IS NULL`;
     let managerObj = await db.query(query);
-
     let managers = managerObj[0].map((m) => m.id);
-    console.log(managers);
     return managers;
   };
 
@@ -262,16 +252,13 @@ const updateEmployeeRole = async () => {
   const getEmployees = async () => {
     let query = `SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS employee FROM employees`;
     let employeeObj = await db.query(query);
-    console.log(employeeObj);
     let employees = employeeObj[0].map((e) => e.employee);
-    console.log("employees: ", employees);
     return employees;
   };
 
   const getRoles = async () => {
     let query = "SELECT CONCAT(id, ': ', title) AS roles FROM roles";
     let rolesObj = await db.query(query);
-
     let roles = rolesObj[0].map((role) => role.roles);
     return roles;
   };
@@ -311,9 +298,7 @@ const updateEmployeeManager = async () => {
   const getEmployees = async () => {
     let query = `SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS employee FROM employees`;
     let employeeObj = await db.query(query);
-    console.log(employeeObj);
     let employees = employeeObj[0].map((e) => e.employee);
-    console.log("employees: ", employees);
     return employees;
   };
 
@@ -321,7 +306,6 @@ const updateEmployeeManager = async () => {
     let query =
       "SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS manager FROM employees WHERE manager_id IS NULL";
     let managerObj = await db.query(query);
-
     let managers = managerObj[0].map((m) => m.manager);
     return managers;
   };
@@ -370,7 +354,7 @@ const viewEmployeesByManager = async () => {
       ],
     },
   ]);
-  console.log(method);
+  
   switch (method) {
     case "All employees ordered by manager.":
       query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e INNER JOIN roles AS r ON e.role_id = r.id INNER JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id ORDER BY manager`;
@@ -400,7 +384,7 @@ const viewEmployeesByManager = async () => {
       ]);
 
       let managerID = parseInt(manager.split(":")[0]);
-      console.log(managerID);
+      
       try {
         let query = `SELECT * FROM employees WHERE manager_id = ?`;
         const data = await db.query(query, managerID);
@@ -429,14 +413,13 @@ const viewEmployeesByDepartment = async () => {
       ],
     },
   ]);
-  console.log(method);
+  
   switch (method) {
     case "All employees ordered by department.":
       query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e INNER JOIN roles AS r ON e.role_id = r.id INNER JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id ORDER BY department_name`;
       const data = await db.query(query);
       console.table(data[0]);
       continuePrompt();
-
       break;
 
     case "Select a department and only view those employees.":
@@ -444,7 +427,6 @@ const viewEmployeesByDepartment = async () => {
         let departmentsObj = await db.query(
           "SELECT DISTINCT name AS department FROM departments"
         );
-
         let departments = departmentsObj[0].map((dept) => dept.department);
         return departments;
       };
@@ -505,7 +487,7 @@ const deleteItems = async () => {
         let query = `DELETE FROM departments WHERE CONCAT(id, ': ', name) = ?`;
         let data = await db.query(query, department);
         console.log("Department has been deleted.");
-        continuePrompt();
+        viewAllDepartments();
       } catch (err) {
         console.log("error: ", err);
       }
@@ -534,7 +516,7 @@ const deleteItems = async () => {
         let query = `DELETE FROM roles WHERE CONCAT(id, ': ', title) = ?`;
         let data = await db.query(query, role);
         console.log("Role has been deleted.");
-        continuePrompt();
+        viewAllRoles();
       } catch (err) {
         console.log("error: ", err);
       }
@@ -546,7 +528,6 @@ const deleteItems = async () => {
         let employeeObj = await db.query(query);
         console.log(employeeObj);
         let employees = employeeObj[0].map((e) => e.employee);
-        console.log("employees: ", employees);
         return employees;
       };
 
@@ -554,7 +535,7 @@ const deleteItems = async () => {
         {
           name: "employee",
           type: "list",
-          message: "Which role would you like to delete?",
+          message: "Which employee would you like to delete?",
           choices: await getEmployees(),
         },
       ]);
@@ -563,7 +544,7 @@ const deleteItems = async () => {
         let query = `DELETE FROM employees WHERE CONCAT(id, ': ', last_name, ', ', first_name) = ?`;
         let data = await db.query(query, employee);
         console.log("Employee has been deleted.");
-        continuePrompt();
+        viewAllEmployees();
       } catch (err) {
         console.log("error: ", err);
       }
@@ -590,7 +571,7 @@ const viewDepartnmentBudgets = async () => {
       choices: await getDepartments(),
     },
   ]);
-console.log(department)
+
   try {
     let query =
       "SELECT d.name AS department, SUM(r.salary) AS total_budget FROM departments d JOIN roles r ON d.id = r.department_id JOIN employees e ON e.role_id = r.id WHERE CONCAT(d.id, ': ', d.name) = ? GROUP BY d.name";
@@ -601,4 +582,5 @@ console.log(department)
     console.log("error: ", err);
   }
 };
+
 init();
