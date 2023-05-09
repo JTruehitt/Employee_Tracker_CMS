@@ -20,6 +20,7 @@ const activitySelect = [
       "UPDATE an EMPLOYEE MANAGER",
       "VIEW EMPLOYEES by MANAGER",
       "VIEW EMPLOYEES by DEPARTMENT",
+      "DELETE RECORDS",
     ],
   },
 ];
@@ -70,9 +71,15 @@ const init = async () => {
     case "VIEW EMPLOYEES by MANAGER":
       viewEmployeesByManager();
       break;
-      case "VIEW EMPLOYEES by DEPARTMENT":
-        viewEmployeesByDepartment();
-        break;
+    case "VIEW EMPLOYEES by DEPARTMENT":
+      viewEmployeesByDepartment();
+      break;
+    case "DELETE RECORDS":
+      deleteItems();
+      break;
+    case "VIEW DEPARTMENT BUDGETS":
+      viewDepartnmentBudgets();
+      break;
     // case '':
     //     //put redirect here;
     //     break;
@@ -118,7 +125,7 @@ const viewAllRoles = async () => {
 // THEN I am presented with a formatted table showing employee data, including employee ids, first names, last names, job titles, departments, salaries, and managers that the employees report to
 
 const viewAllEmployees = async () => {
-  query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e INNER JOIN roles AS r ON e.role_id = r.id INNER JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id`;
+  query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e JOIN roles AS r ON e.role_id = r.id JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id`;
   const data = await db.query(query);
   console.table(data[0]);
   continuePrompt();
@@ -310,10 +317,11 @@ const updateEmployeeManager = async () => {
   };
 
   const getManagers = async () => {
-    let query = "SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS manager FROM employees WHERE manager_id IS NULL";
+    let query =
+      "SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS manager FROM employees WHERE manager_id IS NULL";
     let managerObj = await db.query(query);
 
-    let managers = managerObj[0].map(m => m.manager);
+    let managers = managerObj[0].map((m) => m.manager);
     return managers;
   };
 
@@ -345,117 +353,248 @@ const updateEmployeeManager = async () => {
   }
 };
 
-
 // View employees by manager.
 
 const viewEmployeesByManager = async () => {
+  // I wasn't sure if this meant view all employees ordered by manager, or if you should be able to select a manager and then view their employees. I decided to try to do both and this inital prompt is just to determine which method to use.
 
-  // I wasn't sure if this meant view all employees ordered by manager, or if you should be able to select a manager and then view their employees. I decided to try to do both and this inital prompt is just to determine which method to use. 
-
-  const { method } = await inquirer.prompt([{
-    name: 'method',
-    type: 'list',
-    message: 'How would you like the data presented?',
-    choices: ['All employees ordered by manager.', 'Select a manager and only view their employees.']
-  }])
-console.log(method)
+  const { method } = await inquirer.prompt([
+    {
+      name: "method",
+      type: "list",
+      message: "How would you like the data presented?",
+      choices: [
+        "All employees ordered by manager.",
+        "Select a manager and only view their employees.",
+      ],
+    },
+  ]);
+  console.log(method);
   switch (method) {
-
-    case 'All employees ordered by manager.':
-
+    case "All employees ordered by manager.":
       query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e INNER JOIN roles AS r ON e.role_id = r.id INNER JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id ORDER BY manager`;
       const data = await db.query(query);
       console.table(data[0]);
       continuePrompt();
 
-    break;
+      break;
 
-    case 'Select a manager and only view their employees.':
+    case "Select a manager and only view their employees.":
+      const getManagers = async () => {
+        let query =
+          "SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS manager FROM employees WHERE manager_id IS NULL";
+        let managerObj = await db.query(query);
 
-    const getManagers = async () => {
-      let query = "SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS manager FROM employees WHERE manager_id IS NULL";
-      let managerObj = await db.query(query);
-  
-      let managers = managerObj[0].map(m => m.manager);
-      return managers;
-    };
+        let managers = managerObj[0].map((m) => m.manager);
+        return managers;
+      };
 
-    const { manager } = await inquirer.prompt([{
-      name: 'manager',
-      type: 'list',
-      message: `Which manager's employees would you like to view?`,
-      choices: await getManagers()
-    }]);
+      const { manager } = await inquirer.prompt([
+        {
+          name: "manager",
+          type: "list",
+          message: `Which manager's employees would you like to view?`,
+          choices: await getManagers(),
+        },
+      ]);
 
-    let managerID = parseInt(manager.split(':')[0]);
-    console.log(managerID)
-    try {
-      let query = `SELECT * FROM employees WHERE manager_id = ?`
-    const data = await db.query(query, managerID);
-      console.table(data[0]);
-      continuePrompt()
-    } catch (err) {
-      console.log('error :', err)
-    }
-    break;
+      let managerID = parseInt(manager.split(":")[0]);
+      console.log(managerID);
+      try {
+        let query = `SELECT * FROM employees WHERE manager_id = ?`;
+        const data = await db.query(query, managerID);
+        console.table(data[0]);
+        continuePrompt();
+      } catch (err) {
+        console.log("error :", err);
+      }
+      break;
   }
-}
+};
 
 // View employees by department.
 
 const viewEmployeesByDepartment = async () => {
+  // Same as prior query, I wasn't sure which output this wanted, so I built in both options.
 
-  // Same as prior query, I wasn't sure which output this wanted, so I built in both options. 
-
-  const { method } = await inquirer.prompt([{
-    name: 'method',
-    type: 'list',
-    message: 'How would you like the data presented?',
-    choices: ['All employees ordered by department.', 'Select a department and only view those employees.']
-  }])
-console.log(method)
+  const { method } = await inquirer.prompt([
+    {
+      name: "method",
+      type: "list",
+      message: "How would you like the data presented?",
+      choices: [
+        "All employees ordered by department.",
+        "Select a department and only view those employees.",
+      ],
+    },
+  ]);
+  console.log(method);
   switch (method) {
-
-    case 'All employees ordered by department.':
-
+    case "All employees ordered by department.":
       query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department_name, r.salary, CONCAT(e2.first_name, ' ', e2.last_name) AS manager FROM employees AS e INNER JOIN roles AS r ON e.role_id = r.id INNER JOIN departments AS d ON d.id = r.department_id LEFT JOIN employees AS e2 ON e.manager_id = e2.id ORDER BY department_name`;
       const data = await db.query(query);
       console.table(data[0]);
       continuePrompt();
 
-    break;
+      break;
 
-    case 'Select a department and only view those employees.':
+    case "Select a department and only view those employees.":
+      const getDepartments = async () => {
+        let departmentsObj = await db.query(
+          "SELECT DISTINCT name AS department FROM departments"
+        );
 
-    const getDepartments = async () => {
-      let departmentsObj = await db.query(
-        "SELECT DISTINCT name AS department FROM departments"
-      );
-  
-      let departments = departmentsObj[0].map((dept) => dept.department);
-      return departments;
-    };
+        let departments = departmentsObj[0].map((dept) => dept.department);
+        return departments;
+      };
 
-    const { department } = await inquirer.prompt([{
-      name: 'department',
-      type: 'list',
-      message: `Which department's employees would you like to view?`,
-      choices: await getDepartments()
-    }]);
+      const { department } = await inquirer.prompt([
+        {
+          name: "department",
+          type: "list",
+          message: `Which department's employees would you like to view?`,
+          choices: await getDepartments(),
+        },
+      ]);
 
-    try {
-      let query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department, CONCAT(e2.last_name, ", ", e2.first_name) AS manager FROM employees e INNER JOIN roles r ON e.role_id = r.id INNER JOIN departments d ON r.department_id = d.id LEFT JOIN employees e2 ON e2.id = e.manager_id WHERE d.name = ?`
-    const data = await db.query(query, department);
-      console.table(data[0]);
-      continuePrompt()
-    } catch (err) {
-      console.log('error :', err)
-    }
-    break;
+      try {
+        let query = `SELECT e.id, e.first_name, e.last_name, r.title, d.name AS department, CONCAT(e2.last_name, ", ", e2.first_name) AS manager FROM employees e INNER JOIN roles r ON e.role_id = r.id INNER JOIN departments d ON r.department_id = d.id LEFT JOIN employees e2 ON e2.id = e.manager_id WHERE d.name = ?`;
+        const data = await db.query(query, department);
+        console.table(data[0]);
+        continuePrompt();
+      } catch (err) {
+        console.log("error :", err);
+      }
+      break;
   }
-}
+};
 // Delete departments, roles, and employees.
+
+const deleteItems = async () => {
+  const { itemType } = await inquirer.prompt([
+    {
+      name: "itemType",
+      type: "list",
+      message: "What would you like to delete?",
+      choices: ["departments", "roles", "employees"],
+    },
+  ]);
+
+  switch (itemType) {
+    case "departments":
+      const getDepartments = async () => {
+        let query =
+          "SELECT CONCAT(id, ': ', name) AS departments FROM departments";
+        let departmentsObj = await db.query(query);
+
+        let departments = departmentsObj[0].map((dept) => dept.departments);
+        return departments;
+      };
+
+      const { department } = await inquirer.prompt([
+        {
+          name: "department",
+          type: "list",
+          message: "Which department would you like to delete?",
+          choices: await getDepartments(),
+        },
+      ]);
+
+      try {
+        let query = `DELETE FROM departments WHERE CONCAT(id, ': ', name) = ?`;
+        let data = await db.query(query, department);
+        console.log("Department has been deleted.");
+        continuePrompt();
+      } catch (err) {
+        console.log("error: ", err);
+      }
+
+      break;
+
+    case "roles":
+      const getRoles = async () => {
+        let query = "SELECT CONCAT(id, ': ', title) AS roles FROM roles";
+        let rolesObj = await db.query(query);
+
+        let roles = rolesObj[0].map((role) => role.roles);
+        return roles;
+      };
+
+      const { role } = await inquirer.prompt([
+        {
+          name: "role",
+          type: "list",
+          message: "Which role would you like to delete?",
+          choices: await getRoles(),
+        },
+      ]);
+
+      try {
+        let query = `DELETE FROM roles WHERE CONCAT(id, ': ', title) = ?`;
+        let data = await db.query(query, role);
+        console.log("Role has been deleted.");
+        continuePrompt();
+      } catch (err) {
+        console.log("error: ", err);
+      }
+      break;
+
+    case "employees":
+      const getEmployees = async () => {
+        let query = `SELECT CONCAT(id, ': ', last_name, ', ', first_name) AS employee FROM employees`;
+        let employeeObj = await db.query(query);
+        console.log(employeeObj);
+        let employees = employeeObj[0].map((e) => e.employee);
+        console.log("employees: ", employees);
+        return employees;
+      };
+
+      const { employee } = await inquirer.prompt([
+        {
+          name: "employee",
+          type: "list",
+          message: "Which role would you like to delete?",
+          choices: await getEmployees(),
+        },
+      ]);
+
+      try {
+        let query = `DELETE FROM employees WHERE CONCAT(id, ': ', last_name, ', ', first_name) = ?`;
+        let data = await db.query(query, employee);
+        console.log("Employee has been deleted.");
+        continuePrompt();
+      } catch (err) {
+        console.log("error: ", err);
+      }
+      break;
+  }
+};
 
 // View the total utilized budget of a department—in other words, the combined salaries of all employees in that department.
 
+const viewDepartnmentBudgets = async () => {
+  const getDepartments = async () => {
+    let query = "SELECT CONCAT(id, ': ', name) AS departments FROM departments";
+    let departmentsObj = await db.query(query);
+
+    let departments = departmentsObj[0].map((dept) => dept.departments);
+    return departments;
+  };
+
+  const { department } = await inquirer.prompt([
+    {
+      name: "department",
+      type: "list",
+      message: "Which department's budget would you like to view?",
+      choices: await getDepartments(),
+    },
+  ]);
+
+  try {
+    let query =
+      "SELECT d.name AS department, SUM(r.salary) FROM departments d JOIN roles.r ON d.id = r.department_id JOIN employees e ON e.role_id = r.id WHERE department";
+  } catch (err) {
+    console.log("error: ", err);
+  }
+};
 init();
